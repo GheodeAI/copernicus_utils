@@ -37,12 +37,12 @@ You have two options to create your configuration file:
 
 #### Option A: Use the Web Interface (Recommended)
 
-1. Open `WEB/index.html` in your web browser or this link https://GheodeAI.github.io/copernicus_utils/WEB/index.html
+1. Open `docs/index.html` in your web browser or this link https://GheodeAI.github.io/copernicus_utils
 2. Configure your API keys, datasets, and variables using the graphical interface
 3. Download the generated `CONFIG.conf` file
 4. Place it in the root directory of the project
 
-See the [Web Interface Documentation](WEB/WEB.md) for detailed instructions.
+See the [Web Interface Documentation](docs/WEB.md) for detailed instructions.
 
 #### Option B: Manually Edit CONFIG.conf
 
@@ -136,7 +136,7 @@ copernicus_utils/
 ├── CONFIG.conf                     # Configuration file
 ├── Download_ERA5_docker.py         # Main setup script
 ├── README.md                       # This file
-├── WEB/                            # Web configuration generator
+├── docs/                           # Web configuration generator
 │   ├── index.html                  # Web interface
 │   ├── script.js                   # JavaScript logic
 │   ├── styles.css                  # Styling

@@ -21,7 +21,7 @@ Web application to automatically generate `CONFIG.conf` configuration files for 
 
 ### Open the Application
 
-1. Open the `index.html` file in your web browser or go to https://GheodeAI.github.io/copernicus_utils/WEB/index.html
+1. Open the `index.html` file in your web browser or go to https://GheodeAI.github.io/copernicus_utils
 2. The application will load with a default configuration
 
 ### Configure API
@@ -72,7 +72,7 @@ Web application to automatically generate `CONFIG.conf` configuration files for 
 ## File Structure
 
 ```
-WEB/
+docs/
 ├── index.html      # Application HTML structure
 ├── styles.css      # CSS styles with modern design
 ├── script.js       # JavaScript logic for functionality
