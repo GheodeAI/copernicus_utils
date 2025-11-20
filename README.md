@@ -1,19 +1,21 @@
-# Copernicus Utils
+# Copernicus Utils (Hourly ERA5 Only)
 
 A Python utility for downloading ERA5 climate data from the Copernicus Climate Data Store (CDS) using Docker containers with multiple API keys for parallel downloads.
 
 ## Overview
 
-This tool automatically sets up Docker containers for downloading ERA5 reanalysis data from the Copernicus Climate Data Store. It supports multiple users/API keys for parallel downloads and handles both single-level and pressure-level variables.
+This tool automatically sets up Docker containers for downloading ERA5 reanalysis data from the Copernicus Climate Data Store. It supports multiple users/API keys for parallel downloads and handles both single-level and pressure-level variables with advanced configuration options.
 
 ## Features
 
+- **Web Configuration Generator**: Graphical interface to create CONFIG.conf files easily
 - **Multi-user support**: Configure multiple API keys for parallel downloads
 - **Docker containerization**: Each user gets their own container for isolated downloads
-- **Flexible variable configuration**: Support for both single-level and pressure-level variables
+- **Advanced variable configuration**: Python dictionary format with full control over temporal and spatial parameters
 - **Automatic directory structure**: Creates organized data directories
-- **Region-specific downloads**: Configure custom geographical areas
-- **Time range flexibility**: Set custom start and end years for each variable
+- **Region-specific downloads**: Configure custom geographical areas with precise coordinates
+- **Flexible temporal selection**: Customize years, months, days, and hours for each variable
+- **275+ ERA5 variables**: Full support for single-level, pressure-level, and land variables
 
 ## Prerequisites
 
@@ -31,35 +33,73 @@ This tool automatically sets up Docker containers for downloading ERA5 reanalysi
 
 ### 2. Configure the Project
 
-Edit the `config.conf` file to set up your configuration:
+You have two options to create your configuration file:
+
+#### Option A: Use the Web Interface (Recommended)
+
+1. Open `WEB/index.html` in your web browser or this link https://GheodeAI.github.io/copernicus_utils/WEB/index.html
+2. Configure your API keys, datasets, and variables using the graphical interface
+3. Download the generated `CONFIG.conf` file
+4. Place it in the root directory of the project
+
+See the [Web Interface Documentation](WEB/WEB.md) for detailed instructions.
+
+#### Option B: Manually Edit CONFIG.conf
+
+Edit the `CONFIG.conf` file to set up your configuration:
 
 #### API Keys
-```ini
-CDSAPI_KEY_1=your_first_api_key_here
-CDSAPI_KEY_2=your_second_api_key_here
+```python
+CDSAPI_KEY_1=your-unique-api-key-here
+CDSAPI_KEY_2=your-unique-api-key-here
+CDSAPI_KEY_3=your-unique-api-key-here
 ```
 
-#### Variables
-Configure variables using the format:
-```ini
-VARIABLE_<number>=<variable_name>,<pressure_levels>,<dataset_id>,<start_year>,<end_year>,<region>
+#### Datasets
+```python
+DATASET_1=reanalysis-era5-single-levels
+DATASET_2=reanalysis-era5-pressure-levels
 ```
 
-**Examples:**
-```ini
-# Single-level variable (2m temperature)
-VARIABLE_1=2m_temperature,0,1,1940,2024,90 -180 -90 180
+#### Variables (Python Dictionary Format)
+Configure variables using Python dictionary format for maximum flexibility:
 
-# Pressure-level variable (wind components)
-VARIABLE_2=u_component_of_wind,20 50 100,2,1950,2024,90 -180 -90 180
+```python
+VARIABLE_1 = {
+    'name': 'mean_sea_level_pressure',
+    'pressure_levels': [0],
+    'dataset_id': 1,
+    'start_year': 1940,
+    'end_year': 2024,
+    'region': {'north': 90, 'west': -180, 'south': -90, 'east': 180},
+    'months': ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
+    'days': ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31'],
+    'hours': ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00']
+}
+
+VARIABLE_2 = {
+    'name': 'temperature',
+    'pressure_levels': [1, 2, 3, 5, 10, 20, 50, 100],
+    'dataset_id': 2,
+    'start_year': 1940,
+    'end_year': 2024,
+    'region': {'north': 40.75, 'west': -3.75, 'south': 40.25, 'east': -3.25},
+    'months': ['01', '06', '12'],  # Only specific months
+    'days': ['01', '15'],           # Only specific days
+    'hours': ['00:00', '12:00']     # Only specific hours
+}
 ```
 
 **Parameter explanations:**
-- `variable_name`: ERA5 variable name (e.g., `2m_temperature`, `u_component_of_wind`)
-- `pressure_levels`: Space-separated pressure levels in hPa, or `0` for single-level variables
-- `dataset_id`: `1` for single-levels, `2` for pressure-levels
+- `name`: ERA5 variable name (e.g., `mean_sea_level_pressure`, `temperature`)
+- `pressure_levels`: List of pressure levels in hPa, or `[0]` for single-level variables
+- `dataset_id`: corresponding dataset number of the assigned dataset, in this case
+  - `1` for single-levels, `2` for pressure-levels
 - `start_year`, `end_year`: Time range for download
-- `region`: Bounding box as `North West South East` (e.g., `90 -180 -90 180` for global)
+- `region`: Dictionary with `north`, `west`, `south`, `east` coordinates
+- `months`: List of months to download (01-12)
+- `days`: List of days to download (01-31)
+- `hours`: List of hours to download in HH:MM format
 
 ### 3. Run the Setup Script
 
@@ -70,11 +110,13 @@ python Download_ERA5_docker.py
 ```
 
 This script will:
-- Parse your configuration
+- Parse your `CONFIG.conf` file
+- Validate all variable configurations
 - Create the necessary directory structure
 - Generate Docker containers for each user
-- Create individual download scripts
-- Assign variables to users automatically
+- Create individual download scripts with your specific parameters
+- Assign variables and pressure levels to users automatically, and determine if the same variable/pressure will not be downloaded.
+- Display a summary of all assignments and configurations
 
 ### 4. Start the Downloads
 
@@ -91,18 +133,23 @@ After running the setup script, your project will have the following structure:
 
 ```
 copernicus_utils/
-├── config.conf                    # Configuration file
+├── CONFIG.conf                     # Configuration file
 ├── Download_ERA5_docker.py         # Main setup script
 ├── README.md                       # This file
-├── data/                          # Downloaded data
+├── WEB/                            # Web configuration generator
+│   ├── index.html                  # Web interface
+│   ├── script.js                   # JavaScript logic
+│   ├── styles.css                  # Styling
+│   └── WEB.md                      # Web documentation
+├── data/                           # Downloaded data
 │   └── reanalysis-era5-*/
 │       └── variable_name/
 │           └── [pressure_level/]   # Only for pressure-level variables
-└── docker/                       # Docker infrastructure
-    ├── docker-compose.yml         # Docker Compose file
-    └── user_*/                    # Individual user containers
+└── docker/                         # Docker infrastructure
+    ├── docker-compose.yml          # Docker Compose file
+    └── user_*/                     # Individual user containers
         ├── Dockerfile
-        └── download_era5.py       # User-specific download script
+        └── download_era5.py        # User-specific download script
 ```
 
 ## Downloaded Data Format
@@ -115,18 +162,25 @@ Each file contains one year of hourly data for the specified variable and region
 
 ## Configuration Parameters
 
-### Datasets
-- `DATASET_1=reanalysis-era5-single-levels` - Surface and single-level variables
-- `DATASET_2=reanalysis-era5-pressure-levels` - Atmospheric pressure-level variables
+### Available Datasets
+- `reanalysis-era5-single-levels` - Surface and single-level variables (275+ variables)
+- `reanalysis-era5-pressure-levels` - Atmospheric pressure-level variables (16 variables)
+- `reanalysis-era5-land` - Land surface variables
+- `reanalysis-era5-single-levels-monthly-means` - Monthly averaged single-level data
+- `reanalysis-era5-pressure-levels-monthly-means` - Monthly averaged pressure-level data
 
 ### Common ERA5 Variables
 
-**Single-level variables (use pressure level `0`):**
+**Single-level variables (use pressure_levels: [0]):**
 - `2m_temperature` - 2-meter air temperature
 - `10m_u_component_of_wind` - 10-meter U wind component
 - `10m_v_component_of_wind` - 10-meter V wind component
 - `mean_sea_level_pressure` - Sea level pressure
-- `total_precipitation` - Precipitation
+- `total_precipitation` - Total precipitation
+- `surface_pressure` - Surface pressure
+- `2m_dewpoint_temperature` - 2-meter dewpoint temperature
+- `skin_temperature` - Skin temperature
+- Plus 267 more variables available in the web interface
 
 **Pressure-level variables:**
 - `temperature` - Air temperature at pressure levels
@@ -134,9 +188,27 @@ Each file contains one year of hourly data for the specified variable and region
 - `v_component_of_wind` - V wind component at pressure levels
 - `geopotential` - Geopotential height
 - `relative_humidity` - Relative humidity
+- `specific_humidity` - Specific humidity
+- `vertical_velocity` - Vertical velocity (omega)
+- `vorticity` - Vorticity (relative)
+- `divergence` - Divergence
+- Plus 7 more variables
 
 ### Pressure Levels
-Common pressure levels (in hPa): `1000 925 850 700 500 300 250 200 150 100 70 50 30 20 10`
+Available pressure levels (in hPa): 
+`1, 2, 3, 5, 7, 10, 20, 30, 50, 70, 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 775, 800, 825, 850, 875, 900, 925, 950, 975, 1000`
+
+### Temporal Parameters
+
+You can now customize:
+- **Months**: Select specific months (e.g., only summer months: `['06', '07', '08']`)
+- **Days**: Select specific days (e.g., every 15th: `['15']`)
+- **Hours**: Select specific hours (e.g., synoptic hours: `['00:00', '06:00', '12:00', '18:00']`)
+
+This allows you to:
+- Download only the data you need
+- Reduce download time and storage requirements
+- Focus on specific temporal patterns or events
 
 ## Monitoring Downloads
 
@@ -153,21 +225,6 @@ docker logs cdsapi_user_1
 docker-compose down
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-1. **API Key Issues**: Ensure your API keys are valid and you've accepted the ERA5 license terms
-2. **Docker Issues**: Make sure Docker Desktop is running
-3. **Disk Space**: ERA5 data files can be large; ensure sufficient disk space
-4. **Variable Names**: Use exact ERA5 variable names as specified in the CDS documentation
-
-### Performance Tips
-
-- Use multiple API keys to parallelize downloads
-- Consider downloading smaller time ranges or regions for testing
-- Monitor your CDS quota to avoid hitting limits
-
 ## License
 
 This project is for research and educational purposes. Please ensure compliance with Copernicus Climate Data Store terms of use.
@@ -175,3 +232,14 @@ This project is for research and educational purposes. Please ensure compliance 
 ## Contributing
 
 Feel free to submit issues, suggestions, or pull requests to improve this utility.
+
+## Links
+
+- [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/)
+- [ERA5 Documentation](https://confluence.ecmwf.int/display/CKB/ERA5)
+- [ERA5 Variable List](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels)
+- [CDS API Documentation](https://cds.climate.copernicus.eu/api-how-to)
+
+---
+
+**Developed by GheodeAI** | [GitHub Repository](https://github.com/GheodeAI/copernicus_utils)

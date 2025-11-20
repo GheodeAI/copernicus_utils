@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERA5 Configuration Generator - Copernicus CDS</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 ERA5 Configuration Generator</h1>
+            <p class="subtitle">Graphical interface to generate CONFIG.conf file - Copernicus Climate Data Store</p>
+        </header>
+
+        <div class="content">
+            <!-- API Configuration Section -->
+            <section class="config-section">
+                <h2>🔗 API Configuration</h2>
+                <div class="form-group">
+                    <label for="apiUrl">Copernicus CDS API URL:</label>
+                    <input type="text" id="apiUrl" value="https://cds.climate.copernicus.eu/api" 
+                           placeholder="https://cds.climate.copernicus.eu/api">
+                    <small>Base URL for the Climate Data Store API</small>
+                </div>
+            </section>
+
+            <!-- API Keys Section -->
+            <section class="config-section">
+                <h2>🔑 User API Keys</h2>
+                <p class="section-description">Add API keys for users who will download data. You can add multiple users.</p>
+                <div id="apiKeysContainer">
+                    <!-- API keys will be added dynamically -->
+                </div>
+                <button type="button" class="btn-add" onclick="addApiKey()">
+                    <span>+</span> Add User
+                </button>
+            </section>
+
+            <!-- Variables Section -->
+            <section class="config-section">
+                <h2>🌡️ Meteorological Hourly Variables</h2>
+                <p class="section-description">Configure the variables to download with their specific parameters.</p>
+                <div id="variablesContainer">
+                    <!-- Variables will be added dynamically -->
+                </div>
+                <button type="button" class="btn-add" onclick="addVariable()">
+                    <span>+</span> Add Variable
+                </button>
+            </section>
+
+            <!-- Preview Section -->
+            <section class="config-section preview-section">
+                <h2>👁️ CONFIG.conf File Preview</h2>
+                <button type="button" class="btn-preview" onclick="updatePreview()">
+                    🔄 Update Preview
+                </button>
+                <pre id="configPreview" class="config-preview">Click "Update Preview" to see the file content...</pre>
+            </section>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="button" class="btn-primary" onclick="generateConfig()">
+                    💾 Download CONFIG.conf
+                </button>
+                <button type="button" class="btn-secondary" onclick="loadExistingConfig()">
+                    📂 Load Existing Configuration
+                </button>
+                <button type="button" class="btn-secondary" onclick="resetForm()">
+                    🔄 Reset Form
+                </button>
+            </div>
+        </div>
+
+        <footer>
+            <p>Configuration Generator for Copernicus Climate Data Store API</p>
+            <p class="footer-note">⚠️ Keep your API keys secure and do not share them publicly</p>
+        </footer>
+    </div>
+
+    <!-- Hidden file input for loading config -->
+    <input type="file" id="fileInput" accept=".conf" style="display: none;" onchange="handleFileUpload(event)">
+
+    <!-- Map Selector Modal -->
+    <div id="mapModal" class="map-modal" style="display: none;">
+        <div class="map-modal-content">
+            <div class="map-modal-header">
+                <h3>🗺️ Select Region on Map</h3>
+                <button class="map-modal-close" onclick="closeMapSelector()">✕</button>
+            </div>
+            <div class="map-modal-body">
+                <div class="map-mode-selector">
+                    <button class="map-mode-btn active" id="rectangleMode" onclick="setMapMode('rectangle')">
+                        🔲 Rectangle
+                    </button>
+                    <button class="map-mode-btn" id="pointMode" onclick="setMapMode('point')">
+                        📍 Point + Radius
+                    </button>
+                </div>
+                <div class="map-instructions" id="rectangleInstructions">
+                    <strong>📌 Rectangle Mode:</strong>
+                    <ul style="margin: 10px 0 0 20px; padding: 0;">
+                        <li><strong>Left-click and drag</strong> to draw a rectangle</li>
+                        <li>Release the button to finish selection</li>
+                        <li>Coordinates are automatically rounded to <strong>0.25°</strong></li>
+                    </ul>
+                </div>
+                <div class="map-instructions" id="pointInstructions" style="display: none;">
+                    <strong>📌 Point + Radius Mode:</strong>
+                    <ul style="margin: 10px 0 0 20px; padding: 0;">
+                        <li><strong>Click on a point</strong> on the map</li>
+                        <li>Adjust the <strong>radius in degrees</strong> with the slider</li>
+                        <li>A square region will be created around the point</li>
+                    </ul>
+                    <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px;">
+                        <label for="radiusSlider" style="font-weight: 600;">Radius (degrees): <span id="radiusValue">5.0</span>°</label>
+                        <input type="range" id="radiusSlider" min="0.25" max="45" step="0.25" value="5" 
+                               style="width: 100%; margin-top: 5px;"
+                               oninput="updateRadius(this.value)">
+                        <small style="color: #666;">Minimum: 0.25° • Maximum: 45° (approx. 5000 km)</small>
+                    </div>
+                </div>
+                <div id="map" style="height: 500px; width: 100%;"></div>
+            </div>
+            <div class="map-modal-footer">
+                <button class="btn-secondary" onclick="closeMapSelector()">Cancel</button>
+                <button class="btn-primary" onclick="applyMapSelection()">Apply Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

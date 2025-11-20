@@ -1,70 +1,109 @@
 import os
+import ast
 
-# First step: reed the config file to get the API keys and URL as variables
-config_file = 'config.conf'
+# First step: read the config file to get the API keys and URL as variables
+config_file = 'CONFIG.conf'
+actual_path = os.getcwd()
+config_file = os.path.join(actual_path, config_file)
 # Verify that the config file exists and read its content
 if not os.path.isfile(config_file):
     raise FileNotFoundError(f"Configuration file '{config_file}' not found.")
+
 # Read the config file to get the API keys and URL as variables
 CDSAPI_URL = ''
 API_KEYS = []
 Number_of_Users = 0
+DATASETS = []
+VARIABLES = []
+
 with open(config_file, 'r') as file:
-    for line in file:
+    content = file.read()
+    lines = content.split('\n')
+    
+    for line in lines:
         line = line.strip()
+        
+        # Skip comments and empty lines
+        if line.startswith('#') or not line:
+            continue
+            
+        # Parse API URL
         if line.startswith('CDSAPI_URL='):
-            CDSAPI_URL = line.split('=', 1)[1]
+            CDSAPI_URL = line.split('=', 1)[1].strip()
+            
+        # Parse API Keys
         elif line.startswith('CDSAPI_KEY_'):
-            key = line.split('=', 1)[1]
+            key = line.split('=', 1)[1].strip()
             API_KEYS.append(key)
+            
+        # Parse Datasets
+        elif line.startswith('DATASET_'):
+            dataset = line.split('=', 1)[1].strip()
+            DATASETS.append(dataset)
+            
+        # Parse Variables (Python dictionary format)
+        elif line.startswith('VARIABLE_'):
+            # Collect the complete dictionary across multiple lines
+            var_def = line.split('=', 1)[1].strip()
+            if '{' in var_def:
+                brace_count = var_def.count('{') - var_def.count('}')
+                current_index = lines.index(line) + 1
+                
+                # Continue reading lines until we close all braces
+                while brace_count > 0 and current_index < len(lines):
+                    next_line = lines[current_index].strip()
+                    if not next_line.startswith('#'):
+                        var_def += ' ' + next_line
+                        brace_count += next_line.count('{') - next_line.count('}')
+                    current_index += 1
+                
+                # Parse the dictionary safely
+                try:
+                    var_dict = ast.literal_eval(var_def)
+                    VARIABLES.append(var_dict)
+                except (SyntaxError, ValueError) as e:
+                    print(f"Warning: Could not parse variable definition: {e}")
+                    continue
+
 # Print the loaded configuration for verification
 print(f"CDSAPI_URL: {CDSAPI_URL}")
 Number_of_Users = len(API_KEYS)
 print(f"Available API Keys (number_of_users: {Number_of_Users}):")
 print(API_KEYS)
-
-# Second step: reed the config file to get the dataset, and variables to download
-DATASET = []
-VARIABLES = []
-with open(config_file, 'r') as file:
-    for line in file:
-        line = line.strip()
-        if line.startswith('DATASET_'):
-            dataset = line.split('=', 1)[1]
-            DATASET.append(dataset)
-        elif line.startswith('VARIABLE_'):
-            vars_line = line.split('=', 1)[1]
-            vars_list = [var.strip() for var in vars_line.split(',')]
-            VARIABLES.append(vars_list)
-
-print("Datasets to download:")
-print(DATASET)
-print("Variables to download:")
-print(VARIABLES)
+print("\nDatasets to download:")
+print(DATASETS)
+print("\nVariables to download:")
+for i, var in enumerate(VARIABLES, 1):
+    print(f"  Variable {i}: {var['name']}")
+    print(f"    Pressure levels: {var['pressure_levels']}")
+    print(f"    Dataset ID: {var['dataset_id']}")
+    print(f"    Years: {var['start_year']} - {var['end_year']}")
+    print(f"    Region: {var['region']}")
+    print(f"    Months: {var['months']}")
+    print(f"    Days: {var['days']}")
+    print(f"    Hours: {var['hours']}")
 
 
 # Third step: generate all the folders and paths to download the data
-# Loop through each dataset and its corresponding variables
+# Loop through each variable and create directory structure
 
 actual_path = os.getcwd()
 
 for var in VARIABLES:
-    # Seelect the corresponding dataset
-    dataset = DATASET[int(var[2])-1]
-    # Check if pressure level is 0 (no pressure level)
-    if int(var[1][0]) == 0:
-        dir_path = f"data\{dataset}\{var[0]}"
-        dir_path = os.path.join(actual_path, dir_path)
+    # Select the corresponding dataset
+    dataset = DATASETS[var['dataset_id'] - 1]
+    var_name = var['name']
+    pressure_levels = var['pressure_levels']
+    
+    # Check if pressure level is 0 or [0] (no pressure level)
+    if pressure_levels == [0]:
+        dir_path = os.path.join(actual_path, "data", dataset, var_name)
         os.makedirs(dir_path, exist_ok=True)
         print(f"Created directory: {dir_path}")
     else:
-        pressures = var[1]
-        # Convert pressures to list of strings if it's not already
-        pressures = pressures.split()
-        # Loop for all pressure levels if needed
-        for pressure in pressures:
-            dir_path = f"data\{dataset}\{var[0]}\{pressure}"
-            dir_path = os.path.join(actual_path, dir_path)
+        # Loop for all pressure levels
+        for pressure in pressure_levels:
+            dir_path = os.path.join(actual_path, "data", dataset, var_name, str(pressure))
             os.makedirs(dir_path, exist_ok=True)
             print(f"Created directory: {dir_path}")
 
@@ -113,32 +152,36 @@ for i in range(Number_of_Users):
 # Count the total number of variable-pressure combinations
 total_var_pressure = 0
 for var in VARIABLES:
-    pressures = var[1]
-    pressures = pressures.split()
-    total_var_pressure += len(pressures)
+    pressure_levels = var['pressure_levels']
+    total_var_pressure += len(pressure_levels)
+
 if total_var_pressure > Number_of_Users:
     print("\033[93mWarning: The number of variable-pressure combinations exceeds the number of users.\033[0m")
     print("\033[93mSome combinations will not be assigned to any user.\033[0m")
     print(f"\033[93mTotal combinations: {total_var_pressure}, Number of users: {Number_of_Users}\033[0m")
-# Create a list of (variable, pressure) combinations
+
+# Create a list of (variable_dict, pressure) combinations
 var_pressure_combinations = []
 for var in VARIABLES:
-    pressures = var[1]
-    pressures = pressures.split()
-    for pressure in pressures:
-        var_pressure_combinations.append((var[0], pressure))
+    pressure_levels = var['pressure_levels']
+    for pressure in pressure_levels:
+        var_pressure_combinations.append((var, pressure))
+
 # Assign combinations to users
 assignments = {}
 for i in range(min(Number_of_Users, len(var_pressure_combinations))):
     assignments[f'user_{i+1}'] = var_pressure_combinations[i]
-print("Assignments of variable-pressure to users:")
+
+print("\nAssignments of variable-pressure to users:")
 for user, assignment in assignments.items():
-    print(f"{user}: Variable = {assignment[0]}, Pressure Level = {assignment[1]}")
+    var_dict, pressure = assignment
+    print(f"{user}: Variable = {var_dict['name']}, Pressure Level = {pressure}")
+
 # Print a warning with the rest of combinations if exist
 if len(var_pressure_combinations) > Number_of_Users:
     print("\033[93mThe following variable-pressure combinations were not assigned to any user:\033[0m")
-    for assignment in var_pressure_combinations[Number_of_Users:]:
-        print(f"\033[93mVariable = {assignment[0]}, Pressure Level = {assignment[1]}\033[0m")
+    for var_dict, pressure in var_pressure_combinations[Number_of_Users:]:
+        print(f"\033[93mVariable = {var_dict['name']}, Pressure Level = {pressure}\033[0m")
 
 
 # Sixth step: generate the download_era5.py file per user
@@ -146,35 +189,46 @@ if len(var_pressure_combinations) > Number_of_Users:
 for i in range(Number_of_Users):
     user_key = f'user_{i+1}'
     if user_key in assignments:
-        assigned_var = assignments[user_key][0]
-        assigned_pressure = assignments[user_key][1]
-        # Search the variable selected in VARIABLES to get all the information
-        var_info = None
-        for var in VARIABLES:
-            if var[0] == assigned_var:
-                var_info = var
-                break
-        # Take area from var_info, and convert to list of floats
-        area = [float(x) for x in var_info[5].split()]
+        var_dict, assigned_pressure = assignments[user_key]
+        
+        # Extract variable information from dictionary
+        var_name = var_dict['name']
+        dataset = DATASETS[var_dict['dataset_id'] - 1]
+        start_year = var_dict['start_year']
+        end_year = var_dict['end_year']
+        region = var_dict['region']
+        months = var_dict['months']
+        days = var_dict['days']
+        hours = var_dict['hours']
+        
+        # Convert region dict to area list [north, west, south, east]
+        area = [region['north'], region['west'], region['south'], region['east']]
+        
+        # Format months, days, hours for the request
+        months_str = str(months) if months != ['all'] else "['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']"
+        days_str = str(days) if days != ['all'] else "['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31']"
+        hours_str = str(hours) if hours != ['all'] else "['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00']"
+        
         download_script_path = os.path.join(docker_path, f'user_{i+1}', 'download_era5.py')
         with open(download_script_path, 'w') as ds_file:
             ds_file.write("import os\n")
-            ds_file.write("import cdsapi\n")
-            ds_file.write(f"year_ini = {var_info[3]}\n")
-            ds_file.write(f"year_fin = {var_info[4]}\n")
-            ds_file.write(f"variable = \"{assigned_var}\"\n")
-            ds_file.write(f"dataset = \"{DATASET[int(var_info[2])-1]}\"\n")
-            if assigned_pressure != '0':
-                 ds_file.write(f"pressure_level = {int(assigned_pressure)}\n")
-            ds_file.write("\n")
-            ds_file.write("periodo = (int(year_ini), int(year_fin))\n")
-            ds_file.write("\n")
-            if assigned_pressure != '0':
+            ds_file.write("import cdsapi\n\n")
+            ds_file.write(f"year_ini = {start_year}\n")
+            ds_file.write(f"year_fin = {end_year}\n")
+            ds_file.write(f"variable = \"{var_name}\"\n")
+            ds_file.write(f"dataset = \"{dataset}\"\n")
+            
+            if assigned_pressure != 0:
+                ds_file.write(f"pressure_level = {assigned_pressure}\n")
+            
+            ds_file.write("\nperiodo = (int(year_ini), int(year_fin))\n\n")
+            
+            if assigned_pressure != 0:
                 ds_file.write("dir = f\"/data/{dataset}/{variable}/{pressure_level}/\"\n")
             else:
                 ds_file.write("dir = f\"/data/{dataset}/{variable}/\"\n")
-            ds_file.write("anno = periodo[0]\n")
-            ds_file.write("\n")
+            
+            ds_file.write("anno = periodo[0]\n\n")
             ds_file.write("while anno <= periodo[1]:\n")
             ds_file.write("    filename = os.path.join(dir, f\"{anno}_{variable}.nc\")\n")
             ds_file.write("    target = filename\n")
@@ -182,37 +236,13 @@ for i in range(Number_of_Users):
             ds_file.write("        \"product_type\": [\"reanalysis\"],\n")
             ds_file.write("        \"variable\": [variable],\n")
             ds_file.write("        \"year\": [str(anno)],\n")
-            ds_file.write("        \"month\": [\n")
-            ds_file.write("            \"01\", \"02\", \"03\",\n")
-            ds_file.write("            \"04\", \"05\", \"06\",\n")
-            ds_file.write("            \"07\", \"08\", \"09\",\n")
-            ds_file.write("            \"10\", \"11\", \"12\"\n")
-            ds_file.write("        ],\n")
-            ds_file.write("        \"day\": [\n")
-            ds_file.write("            \"01\", \"02\", \"03\",\n")
-            ds_file.write("            \"04\", \"05\", \"06\",\n")
-            ds_file.write("            \"07\", \"08\", \"09\",\n")
-            ds_file.write("            \"10\", \"11\", \"12\",\n")
-            ds_file.write("            \"13\", \"14\", \"15\",\n")
-            ds_file.write("            \"16\", \"17\", \"18\",\n")
-            ds_file.write("            \"19\", \"20\", \"21\",\n")
-            ds_file.write("            \"22\", \"23\", \"24\",\n")
-            ds_file.write("            \"25\", \"26\", \"27\",\n")
-            ds_file.write("            \"28\", \"29\", \"30\",\n")
-            ds_file.write("            \"31\"\n")
-            ds_file.write("        ],\n")
-            ds_file.write("        \"time\": [\n")
-            ds_file.write("            \"00:00\", \"01:00\", \"02:00\",\n")
-            ds_file.write("            \"03:00\", \"04:00\", \"05:00\",\n")
-            ds_file.write("            \"06:00\", \"07:00\", \"08:00\",\n")
-            ds_file.write("            \"09:00\", \"10:00\", \"11:00\",\n")
-            ds_file.write("            \"12:00\", \"13:00\", \"14:00\",\n")
-            ds_file.write("            \"15:00\", \"16:00\", \"17:00\",\n")
-            ds_file.write("            \"18:00\", \"19:00\", \"20:00\",\n")
-            ds_file.write("            \"21:00\", \"22:00\", \"23:00\"\n")
-            ds_file.write("        ],\n")
-            if assigned_pressure != '0':
+            ds_file.write(f"        \"month\": {months_str},\n")
+            ds_file.write(f"        \"day\": {days_str},\n")
+            ds_file.write(f"        \"time\": {hours_str},\n")
+            
+            if assigned_pressure != 0:
                 ds_file.write("        \"pressure_level\": [str(pressure_level)],\n")
+            
             ds_file.write("        \"data_format\": \"netcdf\",\n")
             ds_file.write("        \"download_format\": \"unarchived\",\n")
             ds_file.write(f"        \"area\": {area}\n")
@@ -223,6 +253,12 @@ for i in range(Number_of_Users):
             ds_file.write(f"        key='{API_KEYS[i]}'\n")
             ds_file.write("    )\n")
             ds_file.write("    client.retrieve(dataset, request, target)\n")
-            ds_file.write("    print(f\"Downloaded {target}\")\n")
-        print(f"Created download_era5.py for user_{i+1} at {download_script_path}")
-        print(f"  Assigned variable: {assigned_var}, pressure level: {assigned_pressure}")
+        
+        print(f"\nCreated download_era5.py for user_{i+1} at {download_script_path}")
+        print(f"  Assigned variable: {var_name}, pressure level: {assigned_pressure}")
+        print(f"  Dataset: {dataset}")
+        print(f"  Years: {start_year} - {end_year}")
+        print(f"  Region: {area}")
+        print(f"  Months: {len(months) if months != ['all'] else 'all (12)'}")
+        print(f"  Days: {len(days) if days != ['all'] else 'all (31)'}")
+        print(f"  Hours: {len(hours) if hours != ['all'] else 'all (24)'}")
