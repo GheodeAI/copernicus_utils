@@ -75,6 +75,35 @@ header h1 {
 .subtitle {
     font-size: 1.1rem;
     opacity: 0.9;
+    margin-bottom: 15px;
+}
+
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.github-link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.github-link svg {
+    width: 20px;
+    height: 20px;
 }
 
 /* ===========================
@@ -731,6 +760,29 @@ footer p {
     color: var(--warning-color);
     font-weight: 600;
     margin-top: 10px;
+}
+
+.footer-credits {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.95rem;
+}
+
+.footer-credits p {
+    margin: 5px 0;
+}
+
+.footer-credits a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.footer-credits a:hover {
+    color: var(--secondary-color);
+    text-decoration: underline;
 }
 
 /* ===========================
