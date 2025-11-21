@@ -12,7 +12,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load default configuration
     loadDefaultConfig();
     updatePreview();
+    
+    // Add event listener for jobs per user changes
+    const jobsPerUserInput = document.getElementById('jobsPerUser');
+    if (jobsPerUserInput) {
+        jobsPerUserInput.addEventListener('change', function() {
+            updateWorkersIndicator();
+            // Auto-update preview when jobs per user changes
+            const previewElement = document.getElementById('configPreview');
+            if (previewElement && previewElement.textContent !== 'Click "Update Preview" to see the file content...') {
+                updatePreview();
+            }
+        });
+        
+        jobsPerUserInput.addEventListener('input', function() {
+            updateWorkersIndicator();
+        });
+    }
+    
+    // Initialize workers indicator
+    updateWorkersIndicator();
 });
+
+// Update workers capacity indicator
+function updateWorkersIndicator() {
+    const indicator = document.getElementById('workersIndicator');
+    if (!indicator) return;
+    
+    const apiKeysCount = getApiKeys().length;
+    const jobsPerUser = parseInt(document.getElementById('jobsPerUser').value) || 1;
+    const totalWorkers = apiKeysCount * jobsPerUser;
+    const totalCombinations = calculateTotalCombinations();
+    
+    if (apiKeysCount === 0 && totalCombinations === 0) {
+        indicator.innerHTML = '';
+        return;
+    }
+    
+    const isValid = totalWorkers >= totalCombinations || totalCombinations === 0;
+    const status = isValid ? '✅' : '⚠️';
+    const statusClass = isValid ? 'status-ok' : 'status-warning';
+    
+    indicator.className = `workers-indicator ${statusClass}`;
+    indicator.innerHTML = `
+        <span class="status-icon">${status}</span>
+        <span class="status-text">
+            <strong>Total Workers:</strong> ${totalWorkers} 
+            ${apiKeysCount > 0 ? `(${apiKeysCount} API ${apiKeysCount === 1 ? 'key' : 'keys'} × ${jobsPerUser} ${jobsPerUser === 1 ? 'job' : 'jobs'})` : ''}
+            ${totalCombinations > 0 ? `<br><strong>Variable-Pressure Combinations:</strong> ${totalCombinations}` : ''}
+            ${!isValid && totalCombinations > 0 ? `<br><strong class="missing">Missing:</strong> ${totalCombinations - totalWorkers} workers` : ''}
+        </span>
+    `;
+}
 
 // ===========================
 // Load Default Configuration
@@ -52,6 +103,7 @@ function addApiKey(defaultKey = '') {
     
     container.appendChild(itemDiv);
     renumberApiKeys();
+    updateWorkersIndicator();
 }
 
 function removeApiKey(id) {
@@ -59,6 +111,13 @@ function removeApiKey(id) {
     if (element) {
         element.remove();
         renumberApiKeys();
+        updateWorkersIndicator();
+        
+        // Auto-update preview if it's already visible
+        const previewElement = document.getElementById('configPreview');
+        if (previewElement && previewElement.textContent !== 'Click "Update Preview" to see the file content...') {
+            updatePreview();
+        }
     }
 }
 
@@ -1514,6 +1573,13 @@ function removeVariable(id) {
     if (element) {
         element.remove();
         renumberVariables();
+        updateWorkersIndicator();
+        
+        // Auto-update preview if it's already visible
+        const previewElement = document.getElementById('configPreview');
+        if (previewElement && previewElement.textContent !== 'Click "Update Preview" to see the file content...') {
+            updatePreview();
+        }
     }
 }
 
@@ -1637,8 +1703,10 @@ function validateYears(id) {
 // ===========================
 function generateConfigContent() {
     const apiUrl = document.getElementById('apiUrl').value.trim();
+    const jobsPerUser = document.getElementById('jobsPerUser').value.trim() || '1';
     
     let config = `CDSAPI_URL=${apiUrl}\n\n`;
+    config += `JOBS_PER_USER=${jobsPerUser}\n\n`;
 
     // API Keys
     const apiKeys = getApiKeys();
@@ -1693,6 +1761,47 @@ function generateConfigContent() {
 // ===========================
 function getApiKeysCount() {
     return document.querySelectorAll('.api-key-item').length;
+}
+
+// Calculate total variable-pressure combinations
+function calculateTotalCombinations() {
+    const variables = getVariables();
+    let totalCombinations = 0;
+    
+    variables.forEach(variable => {
+        if (variable.pressureLevels === '0' || variable.pressureLevels.trim() === '') {
+            totalCombinations += 1;
+        } else {
+            const levels = variable.pressureLevels.split(' ').filter(l => l.trim() !== '');
+            totalCombinations += levels.length;
+        }
+    });
+    
+    return totalCombinations;
+}
+
+// Calculate total available workers
+function calculateTotalWorkers() {
+    const apiKeys = getApiKeys();
+    const jobsPerUser = parseInt(document.getElementById('jobsPerUser').value) || 1;
+    return apiKeys.length * jobsPerUser;
+}
+
+// Check if there are enough workers for all combinations
+function validateWorkersCapacity() {
+    const totalCombinations = calculateTotalCombinations();
+    const totalWorkers = calculateTotalWorkers();
+    const apiKeys = getApiKeys();
+    const jobsPerUser = parseInt(document.getElementById('jobsPerUser').value) || 1;
+    
+    return {
+        totalCombinations: totalCombinations,
+        totalWorkers: totalWorkers,
+        apiKeysCount: apiKeys.length,
+        jobsPerUser: jobsPerUser,
+        isValid: totalWorkers >= totalCombinations,
+        unassigned: Math.max(0, totalCombinations - totalWorkers)
+    };
 }
 
 function getApiKeys() {
@@ -1775,6 +1884,38 @@ function updatePreview() {
     const previewElement = document.getElementById('configPreview');
     const configContent = generateConfigContent();
     previewElement.textContent = configContent;
+    
+    // Validate workers capacity and show warning if needed
+    const validation = validateWorkersCapacity();
+    
+    // Remove any existing warning
+    const existingWarning = document.querySelector('.workers-warning');
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+    
+    if (!validation.isValid && validation.totalCombinations > 0) {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'workers-warning';
+        warningDiv.innerHTML = `
+            <div class="warning-header">⚠️ Insufficient Workers</div>
+            <div class="warning-content">
+                <p><strong>Total variable-pressure combinations:</strong> ${validation.totalCombinations}</p>
+                <p><strong>Available workers:</strong> ${validation.totalWorkers} (${validation.apiKeysCount} API keys × ${validation.jobsPerUser} jobs per user)</p>
+                <p><strong>Unassigned combinations:</strong> ${validation.unassigned}</p>
+                <p class="warning-solution">
+                    <strong>Solutions:</strong><br>
+                    • Add more API keys<br>
+                    • Increase "Jobs per User" (recommended: 1-3)<br>
+                    • Reduce the number of variables or pressure levels
+                </p>
+            </div>
+        `;
+        
+        // Insert warning before preview
+        const previewSection = document.querySelector('.preview-section');
+        previewSection.insertBefore(warningDiv, previewElement);
+    }
 }
 
 // ===========================
@@ -1798,6 +1939,27 @@ function generateConfig() {
     if (variables.length === 0) {
         alert('⚠️ Please add at least one variable before generating the file.');
         return;
+    }
+    
+    // Validate workers capacity
+    const validation = validateWorkersCapacity();
+    if (!validation.isValid) {
+        const proceed = confirm(
+            `⚠️ WARNING: Insufficient Workers!\n\n` +
+            `Total variable-pressure combinations: ${validation.totalCombinations}\n` +
+            `Available workers: ${validation.totalWorkers} (${validation.apiKeysCount} API keys × ${validation.jobsPerUser} jobs/user)\n` +
+            `Unassigned combinations: ${validation.unassigned}\n\n` +
+            `Some data will NOT be downloaded!\n\n` +
+            `Solutions:\n` +
+            `• Add more API keys\n` +
+            `• Increase "Jobs per User" (recommended: 1-3)\n` +
+            `• Reduce variables or pressure levels\n\n` +
+            `Do you want to continue anyway?`
+        );
+        
+        if (!proceed) {
+            return;
+        }
     }
     
     // Validate dataset IDs
@@ -1903,6 +2065,12 @@ function parseConfigFile(content) {
         if (line.startsWith('CDSAPI_URL=')) {
             const url = line.split('=')[1].trim();
             document.getElementById('apiUrl').value = url;
+        }
+        
+        // Parse Jobs per User
+        if (line.startsWith('JOBS_PER_USER=')) {
+            const jobs = line.split('=')[1].trim();
+            document.getElementById('jobsPerUser').value = jobs;
         }
         
         // Parse API Keys

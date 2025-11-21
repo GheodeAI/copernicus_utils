@@ -786,6 +786,111 @@ footer p {
 }
 
 /* ===========================
+   Workers Warning
+   =========================== */
+.workers-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    animation: warningPulse 2s ease-in-out infinite;
+}
+
+.warning-header {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #856404;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.warning-content {
+    color: #856404;
+    line-height: 1.8;
+}
+
+.warning-content p {
+    margin: 8px 0;
+}
+
+.warning-content strong {
+    color: #664d03;
+}
+
+.warning-solution {
+    background: rgba(255, 255, 255, 0.5);
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 12px;
+    border-left: 4px solid #ff9800;
+}
+
+.warning-solution strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #e65100;
+}
+
+@keyframes warningPulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(255, 193, 7, 0.5);
+    }
+}
+
+/* ===========================
+   Workers Indicator
+   =========================== */
+.workers-indicator {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.workers-indicator.status-ok {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 2px solid #28a745;
+    color: #155724;
+}
+
+.workers-indicator.status-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    color: #856404;
+    animation: warningPulse 2s ease-in-out infinite;
+}
+
+.workers-indicator .status-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.workers-indicator .status-text {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.workers-indicator .status-text strong {
+    font-weight: 600;
+}
+
+.workers-indicator .status-text .missing {
+    color: #dc3545;
+    font-weight: 700;
+}
+
+/* ===========================
    Animations
    =========================== */
 @keyframes fadeIn {

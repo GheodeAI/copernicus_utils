@@ -30,6 +30,13 @@
                            placeholder="https://cds.climate.copernicus.eu/api">
                     <small>Base URL for the Climate Data Store API</small>
                 </div>
+                <div class="form-group">
+                    <label for="jobsPerUser">Concurrent Jobs per User:</label>
+                    <input type="number" id="jobsPerUser" value="1" min="1" max="10" 
+                           placeholder="1" onchange="updateWorkersIndicator()">
+                    <small>Number of simultaneous downloads (variable-pressure combinations) per API key. Recommended: 1-3 to avoid API throttling.</small>
+                    <div id="workersIndicator" class="workers-indicator"></div>
+                </div>
             </section>
 
             <!-- API Keys Section -->

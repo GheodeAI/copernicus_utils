@@ -10,7 +10,8 @@ This tool automatically sets up Docker containers for downloading ERA5 reanalysi
 
 - **Web Configuration Generator**: Graphical interface to create CONFIG.conf files easily
 - **Multi-user support**: Configure multiple API keys for parallel downloads
-- **Docker containerization**: Each user gets their own container for isolated downloads
+- **Multiple jobs per user**: Each API key can handle multiple simultaneous downloads (configurable)
+- **Docker containerization**: Each download runs in its own isolated container
 - **Advanced variable configuration**: Python dictionary format with full control over temporal and spatial parameters
 - **Automatic directory structure**: Creates organized data directories
 - **Region-specific downloads**: Configure custom geographical areas with precise coordinates
@@ -47,6 +48,16 @@ See the [Web Interface Documentation](docs/WEB.md) for detailed instructions.
 #### Option B: Manually Edit CONFIG.conf
 
 Edit the `CONFIG.conf` file to set up your configuration:
+
+#### Concurrent Jobs per User
+```python
+JOBS_PER_USER=1
+```
+This parameter controls how many simultaneous downloads (variable-pressure combinations) each API key can handle. 
+- **Default: 1** - One download per API key
+- **Recommended: 1-3** - To avoid API throttling
+- Each job runs in a separate Docker container
+- Total concurrent downloads = Number of API keys × Jobs per user
 
 #### API Keys
 ```python
@@ -218,12 +229,31 @@ To check the status of your downloads:
 # View running containers
 docker ps
 
-# Check logs for a specific user
-docker logs cdsapi_user_1
+# Check logs for a specific worker (user_job combination)
+docker logs cdsapi_user_1_job_1
+docker logs cdsapi_user_2_job_1
+
+# Check logs for all containers of a user
+docker ps --filter "name=cdsapi_user_1" --format "{{.Names}}" | ForEach-Object { docker logs $_ --tail 50 }
 
 # Stop all downloads
+cd docker
 docker-compose down
 ```
+
+## Understanding the Container Naming
+
+With the `JOBS_PER_USER` parameter, containers are named as `cdsapi_user_X_job_Y`:
+- `X` = User/API key number (1, 2, 3...)
+- `Y` = Job number for that user (1, 2, 3...)
+
+**Example with 2 users and 2 jobs per user:**
+- `cdsapi_user_1_job_1` - First job using API key 1
+- `cdsapi_user_1_job_2` - Second job using API key 1
+- `cdsapi_user_2_job_1` - First job using API key 2
+- `cdsapi_user_2_job_2` - Second job using API key 2
+
+This allows 4 simultaneous downloads using only 2 API keys!
 
 ## License
 
